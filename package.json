@@ -2,6 +2,8 @@
   "name": "pdfmaker",
   "private": true,
   "version": "0.0.0",
+  "description": "PDF Pipeline Studio",
+  "author": "Your Name",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
@@ -12,9 +14,7 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "node scripts/build-server.cjs",
-    "preview": "vite preview",
-    "appstore": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && node setup-appstore.js --run\"",
-    "setup:appstore": "node setup-appstore.js"
+    "preview": "vite preview"
   },
   "dependencies": {
     "cheerio": "^1.1.2",

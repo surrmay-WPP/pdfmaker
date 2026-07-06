@@ -46,5 +46,8 @@ if (frontendDir) {
 }
 
 app.listen(port, () => {
-  console.log(`PDF API listening on http://localhost:${port}`);
+  console.log(`PDF Maker running at http://localhost:${port}`);
+  const url = `http://localhost:${port}`;
+  const openCommand = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+  require('child_process').exec(`${openCommand} ${url}`);
 });

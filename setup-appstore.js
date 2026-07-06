@@ -79,35 +79,35 @@ function getCommonExeCandidates() {
   const programFilesX86 = process.env["ProgramFiles(x86)"] || "";
 
   return [
-    path.join(localAppData, "Programs", "OneView", "OneView.exe"),
-    path.join(localAppData, "OneView", "OneView.exe"),
-    path.join(programFiles, "OneView", "OneView.exe"),
-    path.join(programFilesX86, "OneView", "OneView.exe"),
+    path.join(localAppData, "Programs", "OneView Dev", "OneView Dev.exe"),
+    path.join(localAppData, "OneView Dev", "OneView Dev.exe"),
+    path.join(programFiles, "OneView Dev", "OneView Dev.exe"),
+    path.join(programFilesX86, "OneView Dev", "OneView Dev.exe"),
   ].filter(Boolean);
 }
 
 function findOneViewExeFast() {
-  const envPath = normalizeExePath(process.env.ONEVIEW_PATH || "");
-  if (envPath && exists(envPath)) return envPath;
-
-  const cached = readCachedExePath();
-  if (cached) return cached;
-
-  for (const candidate of getCommonExeCandidates()) {
-    if (exists(candidate)) {
-      writeCachedExePath(candidate);
-      return candidate;
-    }
-  }
-
-  return "";
+  const envPath = normalizeExePath("C:/Users/SurrmayShrivastav/AppData/Local/Programs/oneview-dev/OneView Dev.exe");
+  // if (envPath && exists(envPath)) return envPath;
+  // console.log("Yaha hain")
+  // const cached = readCachedExePath();
+  // if (cached) return cached;
+  // console.log("Hi")
+  // for (const candidate of getCommonExeCandidates()) {
+  //   if (exists(candidate)) {
+  //     writeCachedExePath(candidate);
+  //     return candidate;
+  //   }
+  // }
+  // console.log("Hello!")
+  return envPath;
 }
 
 function findOneViewExe() {
   const fast = findOneViewExeFast();
   if (fast) return fast;
 
-  const whereOutput = run("where", ["OneView.exe"]);
+  const whereOutput = run("where", ["OneView Dev.exe"]);
   if (whereOutput) {
     const first = normalizeExePath(whereOutput.split(/\r?\n/)[0] || "");
     if (first && exists(first)) {
@@ -154,6 +154,7 @@ function updatePackageJson() {
 
 function launchOneView({ attached = false } = {}) {
   const oneViewExe = findOneViewExeFast() || findOneViewExe();
+  console.log(oneViewExe,"exe path");
   if (!oneViewExe) {
     console.error("OneView.exe not found.");
     console.error("Set ONEVIEW_PATH env var or install OneView.");

@@ -7,7 +7,7 @@ const { randomUUID } = require('crypto');
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
 const { JSDOM } = require('jsdom');
-const { PDFDocument } = require('pdf-lib');
+const { PDFDocument, rgb } = require('pdf-lib');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 
@@ -18,10 +18,17 @@ if (ffmpegPath) {
 const MOBILE_DEVICE = puppeteer.KnownDevices['iPhone SE'];
 const DEFAULT_CHROME_PATH = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 
-function getEmailWidth(emailType, shamanMode) {
+function getEmailWidth(emailType, shamanMode, breakpointWidth) {
   if (shamanMode === 'shaman_mass') return 730;
-  if (shamanMode === 'shaman_veeva') return 630;
-  return emailType === 'mass' ? 710 : 610;
+  if (shamanMode === 'shaman_veeva') return 730;
+  if (emailType !== 'mass' && breakpointWidth === 599) return 610;
+  return emailType === 'mass' ? 710 : 710;
+}
+
+function detectBreakpointWidth(html) {
+  if (/max-width:\s*599px/i.test(html)) return 599;
+  if (/max-width:\s*699px/i.test(html)) return 699;
+  return null;
 }
 
 function escapeRegExp(value) {
@@ -319,7 +326,8 @@ async function makePDF(requestBody) {
     shamanMode = 'shaman_veeva';
   }
 
-  const widthValue = getEmailWidth(emailType, shamanMode);
+  const breakpointWidth = detectBreakpointWidth(inputHtml);
+  const widthValue = getEmailWidth(emailType, shamanMode, breakpointWidth);
   let htmlForRendering = inputHtml;
 
   const gifSources = extractGifSrcs(htmlForRendering);
@@ -372,7 +380,7 @@ async function makePDF(requestBody) {
         width: 420,
         height: 500,
         isMobile: true,
-        deviceScaleFactor: 1,
+        deviceScaleFactor: 2,
       });
       await mobilePage.setContent(htmlForRendering, {
         waitUntil: 'domcontentloaded',
@@ -388,11 +396,20 @@ async function makePDF(requestBody) {
       });
       await mobilePage.close();
 
+      const MOBILE_SIDE_MARGIN = 10;
       const mobileDoc = await PDFDocument.create();
       const mobileImage = await mobileDoc.embedPng(screenshot);
-      const mobileImagePage = mobileDoc.addPage([mobileImage.width, mobileImage.height]);
-      mobileImagePage.drawImage(mobileImage, {
+      const mobilePageWidth = mobileImage.width + MOBILE_SIDE_MARGIN * 2;
+      const mobileImagePage = mobileDoc.addPage([mobilePageWidth, mobileImage.height]);
+      mobileImagePage.drawRectangle({
         x: 0,
+        y: 0,
+        width: mobilePageWidth,
+        height: mobileImage.height,
+        color: rgb(1, 1, 1),
+      });
+      mobileImagePage.drawImage(mobileImage, {
+        x: MOBILE_SIDE_MARGIN,
         y: 0,
         width: mobileImage.width,
         height: mobileImage.height,
@@ -442,7 +459,15 @@ async function makePDF(requestBody) {
     await waitForPageAssets(summaryPage);
 
     const summaryDimensions = await getDocumentDimensions(summaryPage);
-    const summaryHeight = Math.max(summaryDimensions.height + 20, 120);
+    // Use the tight bounding rect of the body's last child to avoid whitespace
+    // from the viewport height inflating scrollHeight/offsetHeight.
+    const summaryContentHeight = await summaryPage.evaluate(() => {
+      const body = document.body;
+      if (!body || !body.lastElementChild) return body ? body.scrollHeight : 0;
+      const rect = body.lastElementChild.getBoundingClientRect();
+      return Math.ceil(rect.bottom + (parseFloat(getComputedStyle(body).paddingBottom) || 0));
+    });
+    const summaryHeight = Math.max(summaryContentHeight + 20, 60);
     const pdf3Buffer = await summaryPage.pdf({
       width: `${Math.max(summaryDimensions.width + 20, widthValue)}px`,
       height: `${summaryHeight}px`,
